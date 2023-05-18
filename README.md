@@ -13,4 +13,10 @@ Typically at http://localhost:3000/
 
 If you encounter any problems running the web application, consider reinstalling your NPM or updating it to the latest version.
 
-The project is created in adherance to METACRAFTERS ETH + AVAX Smart Contract Management Module. This simple project exemplifies simple smart contract interaction between locally deployed ethereum node, a wallet, and a deployed smart contract
+## About this Project
+The project is created in adherance to METACRAFTERS ETH + AVAX Smart Contract Management Module. This simple project exemplifies simple smart contract interaction between locally deployed ethereum node, a wallet, and a deployed smart contract.
+Functionalities include:
+
+## AUTHORS
++ A.G. Rapisa
++ METACRAFTERS
