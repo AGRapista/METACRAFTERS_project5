@@ -10,3 +10,7 @@ After cloning the github, you will want to do the following to get the code runn
 
 After this, the project will be running on your localhost. 
 Typically at http://localhost:3000/
+
+If you encounter any problems running the web application, consider reinstalling your NPM or updating it to the latest version.
+
+The project is created in adherance to METACRAFTERS ETH + AVAX Smart Contract Management Module. This simple project exemplifies simple smart contract interaction between locally deployed ethereum node, a wallet, and a deployed smart contract
