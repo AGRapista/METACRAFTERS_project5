@@ -16,6 +16,11 @@ If you encounter any problems running the web application, consider reinstalling
 ## About this Project
 The project is created in adherance to METACRAFTERS ETH + AVAX Smart Contract Management Module. This simple project exemplifies simple smart contract interaction between locally deployed ethereum node, a wallet, and a deployed smart contract.
 Functionalities include:
++ Updating Storage Transaction variable in deployed smart contract
++ Depositing and Withdrawing / Managing smart contract balance
++ Retrieving Smart Contract transaction history
++ Initializing connection between smart contract and wallet account
++ Initialization of local ethereum network
 
 ## AUTHORS
 + A.G. Rapisa
