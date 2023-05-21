@@ -6,7 +6,6 @@ export default function HomePage() {
   const [ethWallet, setEthWallet] = useState(undefined);
   const [account, setAccount] = useState(undefined);
   const [atm, setATM] = useState(undefined);
-  const [balance, setBalance] = useState(undefined);
 
   const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   const atmABI = atm_abi.abi;
@@ -14,17 +13,20 @@ export default function HomePage() {
   var transactions = []
 
   const getWallet = async() => {
+    console.log("1")
     if (window.ethereum) {
       setEthWallet(window.ethereum);
     }
 
     if (ethWallet) {
+      console.log("2")
       const account = await ethWallet.request({method: "eth_accounts"});
       handleAccount(account);
     }
   }
 
   const handleAccount = (account) => {
+    console.log("3")
     if (account) {
       console.log ("Account connected: ", account);
       setAccount(account);
@@ -35,6 +37,7 @@ export default function HomePage() {
   }
 
   const connectAccount = async() => {
+    console.log("14");
     if (!ethWallet) {
       alert('MetaMask wallet is required to connect');
       return;
@@ -48,6 +51,7 @@ export default function HomePage() {
   };
 
   const getATMContract = () => {
+    console.log("1")
     const provider = new ethers.providers.Web3Provider(ethWallet);
     const signer = provider.getSigner();
     const atmContract = new ethers.Contract(contractAddress, atmABI, signer);
@@ -55,65 +59,63 @@ export default function HomePage() {
     setATM(atmContract);
   }
 
-  const getBalance = async() => {
-    if (atm) {
-      setBalance((await atm.getBalance()).toNumber());
-    }
-  }
+  const sendToETH = async() => {
+    console.log("sending ETH");
 
-  const deposit = async() => {
     if (atm) {
-      let inputBox = document.getElementById("inputAmount")
-      let tx = await atm.deposit(inputBox.value, generateRandomId(5));
-      await tx.wait()
-      getBalance();
+      let receiverAddress = document.getElementById("receiverAddress")
+      let amountHolder = document.getElementById("inputAmount")
+
+      let address = receiverAddress.value;
+      let amount = parseInt(amountHolder.value)
+      let id = generateRandomId(5);
+
+      atm.sendETH(address, amount, id);
       updateTable();
     }
   }
 
-  const withdraw = async() => {
+  const deleteTransaction = async(id) => {
+    console.log("deleting transaction", id);
+
     if (atm) {
-      let inputBox = document.getElementById("inputAmount")
-      let tx = await atm.withdraw(inputBox.value, generateRandomId(5));
-      await tx.wait()
-      getBalance();
+      let deletion = await atm.deleteTransaction(id);
       updateTable();
     }
   }
 
   const updateTable = async() => {
+    console.log("updating table");
     if (atm) {
-      let transactionHistory = await atm.getTransactionHistory();
-      
-      transactions = transactionHistory;
+      let transactionKeys = await atm.getTransactionKeys();
+      let transactionValues = await atm.getTransactionValues();
+
+      console.log(transactionKeys, transactionValues);
 
       const tableBody = document.getElementById("transactionTable");
       tableBody.innerHTML = "";
 
-      let rowIndex = 0
-      transactionHistory.forEach((transaction) => {
+      for (let rowIndex = 0; rowIndex < transactionKeys.length; rowIndex++) {
         const row = document.createElement("tr");
 
         const idCell = document.createElement("td");
-        idCell.textContent = transaction._id;
+        idCell.textContent = transactionKeys[rowIndex];
         row.appendChild(idCell);
 
         const senderCell = document.createElement("td");
-        senderCell.textContent = transaction._address;
+        senderCell.textContent = transactionValues[rowIndex].senderAddress;
         row.appendChild(senderCell);
 
-        const operationCell = document.createElement("td");
-        operationCell.textContent = transaction.operation;
-        row.appendChild(operationCell);
+        const receiverCell = document.createElement("td");
+        receiverCell.textContent = transactionValues[rowIndex].receiverAddress;
+        row.appendChild(receiverCell);
         
         const amountCell = document.createElement("td");
-        amountCell.textContent = transaction.amount;2
+        amountCell.textContent = transactionValues[rowIndex].amount;
         row.appendChild(amountCell);
 
         tableBody.appendChild(row);
-
-        rowIndex+=1;
-      });
+      };
     }
   }
 
@@ -140,26 +142,22 @@ export default function HomePage() {
       return <button onClick={connectAccount}>Please connect your Metamask wallet</button>
     }
 
-    if (balance == undefined) {
-      getBalance();
-    }
-
     updateTable();
 
     return (
       <div>
         <p>Your Account: {account}</p>
-        <p>Your Balance: {balance}</p>
-        <input type="text" id="inputAmount" placeholder="Enter text here"></input>
-        <button onClick={deposit}>Deposit amount</button>
-        <button onClick={withdraw}>Withdraw amount</button>
+        <input type="text" id="receiverAddress" placeholder="Enter receiver address here"></input>
+        <input type="text" id="inputAmount" placeholder="Enter amount here"></input>
+        <button onClick={sendToETH}>Send ETH</button>
+        <button onClick={deleteTransaction}>Delete last transaction</button>
 
         <table className="container">
           <thead>
             <tr>
               <th>ID</th>
-              <th>Address</th>
-              <th>Transaction</th>
+              <th>Sender</th>
+              <th>Receiver</th>
               <th>Amount</th>
             </tr>
           </thead>
@@ -175,7 +173,7 @@ export default function HomePage() {
 
   return (
     <main className="container">
-      <header><h1>Welcome to the Metacrafters ATM!</h1></header>
+      <header><h1>ETH Transfer</h1></header>
       {initUser()}
       <style jsx>{`
         .container {
@@ -184,6 +182,7 @@ export default function HomePage() {
         }
         table {
           border-collapse: collapse;
+          border: 1px solid black;
           width: 100%;
           display: flex;
         }
