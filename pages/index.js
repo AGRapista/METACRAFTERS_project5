@@ -1,16 +1,18 @@
 import {useState, useEffect} from "react";
 import {ethers} from "ethers";
-import atm_abi from "../bin/contracts/Assessment.json";
+import contract_abi from "../bin/contracts/ArgentumToken.json";
 
 export default function HomePage() {
   const [ethWallet, setEthWallet] = useState(undefined);
   const [account, setAccount] = useState(undefined);
-  const [atm, setATM] = useState(undefined);
+  const [solContract, setContract] = useState(undefined);
+
+  const [ownerAddress, setOwner] = useState();
+  const [totalSupply, setTotalSupply] = useState();
+  const [userBalance, setUserBalance] = useState();
 
   const contractAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-  const atmABI = atm_abi.abi;
-
-  var transactions = []
+  const contractABI = contract_abi.abi;
 
   const getWallet = async() => {
     console.log("1")
@@ -37,7 +39,7 @@ export default function HomePage() {
   }
 
   const connectAccount = async() => {
-    console.log("14");
+    console.log("4");
     if (!ethWallet) {
       alert('MetaMask wallet is required to connect');
       return;
@@ -45,125 +47,105 @@ export default function HomePage() {
   
     const accounts = await ethWallet.request({ method: 'eth_requestAccounts' });
     handleAccount(accounts);
-    
-    // once wallet is set we can get a reference to our deployed contract
-    getATMContract();
+    getContract();
   };
 
-  const getATMContract = () => {
-    console.log("1")
+  const getContract = () => {
     const provider = new ethers.providers.Web3Provider(ethWallet);
     const signer = provider.getSigner();
-    const atmContract = new ethers.Contract(contractAddress, atmABI, signer);
+    const _contract = new ethers.Contract(contractAddress, contractABI, signer);
  
-    setATM(atmContract);
+    setContract(_contract);
   }
 
-  const sendToETH = async() => {
-    console.log("sending ETH");
-
-    if (atm) {
-      let receiverAddress = document.getElementById("receiverAddress")
-      let amountHolder = document.getElementById("inputAmount")
-
-      let address = receiverAddress.value;
-      let amount = parseInt(amountHolder.value)
-      let id = generateRandomId(5);
-
-      atm.sendETH(address, amount, id);
-      updateTable();
-    }
+  const lookupOwner = async() => {
+    let transaction = await solContract.getOwner();
+    setOwner(transaction)
   }
 
-  const deleteTransaction = async(id) => {
-    console.log("deleting transaction", id);
-
-    if (atm) {
-      let deletion = await atm.deleteTransaction(id);
-      updateTable();
-    }
+  const getTotalSupply = async() => {
+    let transaction = await solContract.getTotalSupply();
+    setTotalSupply(transaction.toString())
   }
 
-  const updateTable = async() => {
-    console.log("updating table");
-    if (atm) {
-      let transactionKeys = await atm.getTransactionKeys();
-      let transactionValues = await atm.getTransactionValues();
-
-      console.log(transactionKeys, transactionValues);
-
-      const tableBody = document.getElementById("transactionTable");
-      tableBody.innerHTML = "";
-
-      for (let rowIndex = 0; rowIndex < transactionKeys.length; rowIndex++) {
-        const row = document.createElement("tr");
-
-        const idCell = document.createElement("td");
-        idCell.textContent = transactionKeys[rowIndex];
-        row.appendChild(idCell);
-
-        const senderCell = document.createElement("td");
-        senderCell.textContent = transactionValues[rowIndex].senderAddress;
-        row.appendChild(senderCell);
-
-        const receiverCell = document.createElement("td");
-        receiverCell.textContent = transactionValues[rowIndex].receiverAddress;
-        row.appendChild(receiverCell);
-        
-        const amountCell = document.createElement("td");
-        amountCell.textContent = transactionValues[rowIndex].amount;
-        row.appendChild(amountCell);
-
-        tableBody.appendChild(row);
-      };
-    }
+  const getBalance = async() => {
+    let transaction = await solContract.getBalance(account[0]);
+    setUserBalance(transaction.toString())
   }
 
-  function generateRandomId(length) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let randomId = '';
+  const mintTokens = async() => {
+    let mintAddress = document.getElementById("mintField").value
+    let tokensToMint = document.getElementById("amountToMintField").value
+    let transaction = await solContract.mintToken(mintAddress, tokensToMint);
+    await transaction.wait()
+
+    getTotalSupply()
+    getBalance()
+  }
+
+  const transferTokens = async() => {
+    console.log("here", account[0])
+    let receiver = document.getElementById("receiverField").value
+    let amount = document.getElementById("amountField").value
+    let transaction = await solContract.transferToken( receiver, amount);
+    await transaction.wait()
+
+    getBalance()
+  }
+
+  const burnTokens = async() => {
+    let tokensToBurn = document.getElementById("burnField").value
+    let transaction = await solContract.burnToken(account[0], tokensToBurn);
+    await transaction.wait()
+
+    getTotalSupply()
+    getBalance()
+  }
   
-    for (let i = 0; i < length; i++) {
-      const randomIndex = Math.floor(Math.random() * characters.length);
-      randomId += characters.charAt(randomIndex);
-    }
-  
-    return randomId;
-  }
-
   const initUser = () => {
-    // Check to see if user has Metamask
     if (!ethWallet) {
-      return <p>Please install Metamask in order to use this ATM.</p>
+      return <p>Please install Metamask in order to use this web application.</p>
     }
 
-    // Check to see if user is connected. If not, connect to their account
     if (!account) {
       return <button onClick={connectAccount}>Please connect your Metamask wallet</button>
     }
 
-    updateTable();
+    if(solContract){
+      lookupOwner();
+      getTotalSupply();
+      getBalance();
+    }
 
     return (
       <div>
-        <p>Your Account: {account}</p>
-        <input type="text" id="receiverAddress" placeholder="Enter receiver address here"></input>
-        <input type="text" id="inputAmount" placeholder="Enter amount here"></input>
-        <button onClick={sendToETH}>Send ETH</button>
-        <button onClick={deleteTransaction}>Delete last transaction</button>
+        <p>(Debug) Contract Owner: {ownerAddress}</p>
+        <p style={{ fontWeight: 'bold'}}>Account: <span style={{ fontWeight: 'normal'}}>{account}</span></p>
+        <p style={{ fontWeight: 'bold'}}>Balance: <span style={{ fontWeight: 'normal'}}>{userBalance}</span></p>
+        <p style={{ fontWeight: 'bold'}} >Total Tokens in Network: <span style={{ fontWeight: 'normal'}}>{totalSupply}</span></p>
 
-        <table className="container">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Sender</th>
-              <th>Receiver</th>
-              <th>Amount</th>
-            </tr>
-          </thead>
-          <tbody id="transactionTable">
-          </tbody>
-        </table>
+        <br/>
+        <br/>
+
+        {ownerAddress && ownerAddress.toLowerCase() === account[0].toString() && (
+          <>
+            <p style={{ fontWeight: 'bold'}}>Owner Control</p>
+            <button onClick={mintTokens} style={{ fontWeight: 'bold'}}>Mint Tokens</button>
+            <input id="mintField"></input>
+            <input id="amountToMintField"></input> <br/> <br/>
+            <br/>
+            <br/>
+          </>
+        )}
+
+        <p style={{ fontWeight: 'bold'}}>Standard Control</p>
+
+        <button onClick={transferTokens} style={{ fontWeight: 'bold'}}>Transfer Tokens</button>
+        <input id="receiverField"></input> 
+        <input id="amountField"></input> <br/> <br/>
+
+        <button onClick={burnTokens}  style={{ fontWeight: 'bold'}}>Burn Tokens</button>
+        <input id="burnField"></input>
 
       </div>
     )
@@ -172,27 +154,9 @@ export default function HomePage() {
   useEffect(() => {getWallet();}, []);
 
   return (
-    <main className="container">
-      <header><h1>ETH Transfer</h1></header>
+    <main className="container" style={{ marginLeft: '35%', fontFamily: 'Verdana' }}>
+      <header><h1>ARGENTUM Token</h1></header>
       {initUser()}
-      <style jsx>{`
-        .container {
-          text-align: center;
-          justify-content: center;
-        }
-        table {
-          border-collapse: collapse;
-          border: 1px solid black;
-          width: 100%;
-          display: flex;
-        }
-        th, td {
-          border: 1px solid black;
-          padding: 8px;
-          text-align: left;
-        }
-      `}
-      </style>
     </main>
   )
 }
